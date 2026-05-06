@@ -3,7 +3,7 @@
 > **Tema 10** — *Topici Speciale in Baze de Date si Tehnologii Web*
 > Universitatea din Bucuresti, Facultatea de Matematica si Informatica
 >
-> Studenti:
+> Studenti:<br>
 > Ciprian Amza (506) <br>
 > Nicolae Marius Gherghu (507)
 
