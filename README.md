@@ -4,7 +4,7 @@
 > Universitatea din Bucuresti, Facultatea de Matematica si Informatica
 >
 > Studenti:
-> Ciprian Amza (506)
+> Ciprian Amza (506) <br>
 > Nicolae Marius Gherghu (507)
 
 Demo functional end-to-end care compara **cautarea semantica (vectoriala)** cu
