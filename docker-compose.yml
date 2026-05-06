@@ -1,0 +1,35 @@
+services:
+  oracle-db:
+    image: container-registry.oracle.com/database/free:latest-lite
+    container_name: ${ORACLE_CONTAINER_NAME:-oracle-23ai-demo}
+    platform: linux/arm64/v8  # Apple Silicon native
+    ports:
+      - "1521:1521"   # Listener Oracle Net
+      - "5500:5500"   # Enterprise Manager Express (optional)
+    environment:
+      ORACLE_PWD: ${ORACLE_PWD:-DemoPass123}
+      ORACLE_CHARACTERSET: AL32UTF8
+    volumes:
+      # Director pentru modelul ONNX (vizibil din Oracle ca DIRECTORY MODEL_DIR)
+      - ./models:/opt/oracle/models
+      # Directorul cu scripturile SQL este montat read-only ca referinta;
+      # scripturile sunt rulate explicit de setup.sh (NU auto-mount in /scripts/setup
+      # care ar incerca sa le ruleze inainte de download-ul modelului ONNX si ar esua silent)
+      - ./sql:/opt/oracle/sql:ro
+      # Director pentru fisiere de date auxiliare
+      - ./data:/opt/oracle/data
+      # Volum persistent pentru datele Oracle (supravietuieste restart-urilor containerului)
+      - oradata:/opt/oracle/oradata
+    shm_size: 2gb  # Necesar pentru Oracle DB - default 64MB nu e suficient
+    healthcheck:
+      # `healthcheck.sh` este inclus in imaginea Oracle Free
+      test: ["CMD", "/opt/oracle/checkDBStatus.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 120s  # Primul boot dureaza ~2 min
+    restart: unless-stopped
+
+volumes:
+  oradata:
+    driver: local

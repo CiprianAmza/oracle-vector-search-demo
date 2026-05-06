@@ -1,0 +1,45 @@
+# Variabile de mediu (parole, secrete)
+.env
+backend/.env
+
+# Modele ONNX descarcate (nu in repo - prea mari, ~125MB)
+models/*.onnx
+models/*.zip
+models/__pycache__/
+
+# Volumul Docker pentru Oracle DB (date persistente)
+oradata/
+data/oradata/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+
+# Medii virtuale Python
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Loguri
+*.log
+logs/
+
+# Build artefacts
+dist/
+build/
+*.egg-info/
+
+# Docker
+.docker/

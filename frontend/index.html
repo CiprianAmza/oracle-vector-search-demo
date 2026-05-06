@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vector Search vs Keyword Search — Demo Oracle 23ai</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f6fa;
+      color: #1f2330;
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(135deg, #c74634 0%, #8b1a1a 100%);
+      color: white;
+      padding: 24px 32px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    header h1 { font-size: 22px; font-weight: 600; }
+    header .sub { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+
+    main { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+
+    .search-bar {
+      display: flex; gap: 8px; margin-bottom: 16px;
+      background: white; padding: 16px; border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .search-bar input[type=text] {
+      flex: 1; font-size: 16px; padding: 10px 14px;
+      border: 1px solid #d0d4dc; border-radius: 6px; outline: none;
+    }
+    .search-bar input[type=text]:focus { border-color: #c74634; }
+    .search-bar select {
+      font-size: 14px; padding: 10px 12px;
+      border: 1px solid #d0d4dc; border-radius: 6px;
+      background: white; min-width: 280px;
+    }
+    .search-bar button {
+      font-size: 16px; padding: 10px 22px;
+      background: #c74634; color: white; border: none;
+      border-radius: 6px; cursor: pointer; font-weight: 600;
+    }
+    .search-bar button:hover { background: #a83a2a; }
+    .search-bar button:disabled { background: #999; cursor: not-allowed; }
+
+    .status-bar {
+      font-size: 12px; color: #555; margin-bottom: 16px;
+      padding: 6px 12px; background: white; border-radius: 4px;
+      border-left: 3px solid #c74634;
+    }
+    .status-bar.error { color: #c74634; border-left-color: #c74634; }
+
+    .columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .columns { grid-template-columns: 1fr; }
+    }
+
+    .column {
+      background: white; border-radius: 8px; padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      min-height: 200px;
+    }
+    .column-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; padding-bottom: 12px;
+      border-bottom: 2px solid #f0f1f5;
+    }
+    .column-header h2 { font-size: 16px; font-weight: 600; color: #1f2330; }
+    .badge {
+      font-size: 11px; padding: 2px 10px;
+      border-radius: 12px; font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-vector { background: #e8f0fe; color: #1967d2; }
+    .badge-keyword { background: #fef0e6; color: #c74634; }
+    .timing { font-size: 11px; color: #888; }
+
+    .result {
+      padding: 12px 0; border-bottom: 1px solid #f0f1f5;
+    }
+    .result:last-child { border-bottom: none; }
+    .result .title {
+      font-weight: 600; font-size: 14px; color: #1a73e8;
+      margin-bottom: 4px;
+    }
+    .result .preview {
+      font-size: 13px; color: #444;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .result .meta {
+      display: flex; gap: 12px; align-items: center;
+      margin-top: 6px; font-size: 11px; color: #777;
+    }
+    .result .tags { color: #888; font-style: italic; }
+    .result .score {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      background: #f5f6fa; padding: 1px 6px; border-radius: 3px;
+      font-weight: 600;
+    }
+    .empty, .loading {
+      padding: 24px; text-align: center; color: #888; font-size: 13px;
+    }
+    .loading::after {
+      content: ""; display: inline-block;
+      width: 12px; height: 12px; margin-left: 8px;
+      border: 2px solid #c74634; border-top-color: transparent;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .explain-toolbar {
+      display: flex; justify-content: center; margin: 20px 0 8px;
+    }
+    .explain-toolbar button {
+      font-size: 13px; padding: 8px 16px;
+      background: white; color: #1f2330;
+      border: 1px solid #d0d4dc; border-radius: 6px; cursor: pointer;
+      font-weight: 500;
+    }
+    .explain-toolbar button:hover { background: #f5f6fa; border-color: #999; }
+    .explain-toolbar button:disabled { color: #999; cursor: not-allowed; }
+    .explain-toolbar button.active {
+      background: #c74634; color: white; border-color: #c74634;
+    }
+
+    .explain-section { margin-top: 8px; }
+    .explain-col { padding: 16px; }
+    .explain-col pre.plan, .explain-col pre.sql {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11px; line-height: 1.4;
+      background: #1f2330; color: #e8eaed;
+      padding: 12px; border-radius: 4px;
+      overflow-x: auto; white-space: pre;
+      margin: 8px 0;
+    }
+    .explain-col pre.sql { background: #f5f6fa; color: #1f2330; }
+    .explain-col details { margin-top: 10px; font-size: 12px; }
+    .explain-col details summary {
+      cursor: pointer; color: #1a73e8; padding: 4px 0;
+    }
+
+    .footer {
+      margin-top: 32px; padding-top: 16px; font-size: 11px; color: #999;
+      text-align: center; border-top: 1px solid #e0e3eb;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Vector Search vs Keyword Search — Demo</h1>
+    <div class="sub">
+      Oracle Database 23ai · Tema 10 · Topici Speciale in Baze de Date · UB
+    </div>
+  </header>
+
+  <main>
+    <div class="search-bar">
+      <input
+        type="text"
+        id="query"
+        placeholder="Scrie o intrebare (ex: 'how to make my code faster')..."
+        autofocus />
+      <select id="presets" title="Demo queries pre-definite">
+        <option value="">— alege un demo query —</option>
+        <option value="how to make my code run faster">how to make my code run faster (vector wins)</option>
+        <option value="ConcurrentModificationException">ConcurrentModificationException (keyword wins)</option>
+        <option value="loop iterates too slowly">loop iterates too slowly (vector wins)</option>
+        <option value="NullPointerException best practices">NullPointerException best practices (keyword wins)</option>
+        <option value="avoid changing data after creation">avoid changing data after creation (vector wins)</option>
+        <option value="Collectors.toMap">Collectors.toMap (keyword wins)</option>
+        <option value="memory keeps growing in my application">memory keeps growing (vector wins)</option>
+        <option value="convert string to integer">convert string to integer (tie)</option>
+      </select>
+      <button id="searchBtn">Cauta</button>
+    </div>
+
+    <div class="status-bar" id="statusBar">Gata pentru cautare. Apasa Enter sau click pe Cauta.</div>
+
+    <div class="columns">
+      <section class="column" id="vectorCol">
+        <div class="column-header">
+          <h2>
+            <span class="badge badge-vector">VECTOR</span>
+            Cautare Semantica (Cosine)
+          </h2>
+          <span class="timing" id="vectorTime"></span>
+        </div>
+        <div id="vectorResults" class="empty">Niciun rezultat. Lanseaza o cautare.</div>
+      </section>
+
+      <section class="column" id="keywordCol">
+        <div class="column-header">
+          <h2>
+            <span class="badge badge-keyword">KEYWORD</span>
+            Oracle Text (CONTAINS / SCORE)
+          </h2>
+          <span class="timing" id="keywordTime"></span>
+        </div>
+        <div id="keywordResults" class="empty">Niciun rezultat. Lanseaza o cautare.</div>
+      </section>
+    </div>
+
+    <div class="explain-toolbar">
+      <button id="explainBtn" type="button">
+        Arata planurile de executie Oracle (EXPLAIN PLAN)
+      </button>
+    </div>
+
+    <div class="explain-section" id="explainSection" hidden>
+      <div class="columns">
+        <section class="column explain-col">
+          <div class="column-header">
+            <h2>
+              <span class="badge badge-vector">VECTOR</span>
+              Execution plan
+            </h2>
+          </div>
+          <pre class="plan" id="vectorPlan"></pre>
+          <details>
+            <summary>SQL</summary>
+            <pre class="sql" id="vectorSql"></pre>
+          </details>
+        </section>
+        <section class="column explain-col">
+          <div class="column-header">
+            <h2>
+              <span class="badge badge-keyword">KEYWORD</span>
+              Execution plan
+            </h2>
+          </div>
+          <pre class="plan" id="keywordPlan"></pre>
+          <details>
+            <summary>SQL</summary>
+            <pre class="sql" id="keywordSql"></pre>
+          </details>
+        </section>
+      </div>
+    </div>
+
+    <div class="footer">
+      Embedding-uri generate cu <code>sentence-transformers/all-MiniLM-L12-v2</code> ·
+      Storage + retrieval in Oracle 23ai prin <code>VECTOR(384, FLOAT32)</code> ·
+      Backend FastAPI · python-oracledb thin mode
+    </div>
+  </main>
+
+  <script>
+    const API_BASE = ""; // same-origin (FastAPI serveste si frontend-ul)
+    const $ = (id) => document.getElementById(id);
+
+    function escapeHtml(s) {
+      if (s == null) return "";
+      return String(s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function renderResults(items, kind) {
+      if (!items || items.length === 0) {
+        return '<div class="empty">Niciun rezultat pentru aceasta interogare.</div>';
+      }
+      return items.map((r, i) => {
+        const scoreLabel = kind === "vector"
+          ? `similarity: ${r.similarity ?? "?"}`
+          : `score: ${r.score_text ?? "?"}`;
+        return `
+          <div class="result">
+            <div class="title">${i + 1}. ${escapeHtml(r.title || "(fara titlu)")}</div>
+            <div class="preview">${escapeHtml(r.body_preview || "")}</div>
+            <div class="meta">
+              <span class="tags">${escapeHtml(r.tags || "")}</span>
+              <span class="score">${scoreLabel}</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function fetchJson(url) {
+      const t0 = performance.now();
+      const resp = await fetch(url);
+      const elapsed = (performance.now() - t0).toFixed(0);
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${txt}`);
+      }
+      const data = await resp.json();
+      return { data, elapsed };
+    }
+
+    async function runSearch() {
+      const q = $("query").value.trim();
+      if (!q) return;
+
+      const btn = $("searchBtn");
+      btn.disabled = true;
+      $("statusBar").textContent = `Caut: "${q}"...`;
+      $("statusBar").classList.remove("error");
+      $("vectorResults").className = "loading";
+      $("vectorResults").textContent = "Caut...";
+      $("keywordResults").className = "loading";
+      $("keywordResults").textContent = "Caut...";
+      $("vectorTime").textContent = "";
+      $("keywordTime").textContent = "";
+
+      const limit = 5;
+      const vecUrl = `${API_BASE}/api/search/vector?q=${encodeURIComponent(q)}&limit=${limit}`;
+      const kwUrl  = `${API_BASE}/api/search/keyword?q=${encodeURIComponent(q)}&limit=${limit}`;
+
+      // Lanseaza cele doua cereri in paralel
+      const [vec, kw] = await Promise.allSettled([fetchJson(vecUrl), fetchJson(kwUrl)]);
+
+      if (vec.status === "fulfilled") {
+        $("vectorResults").className = "";
+        $("vectorResults").innerHTML = renderResults(vec.value.data, "vector");
+        $("vectorTime").textContent = `${vec.value.elapsed} ms`;
+      } else {
+        $("vectorResults").className = "empty";
+        $("vectorResults").textContent = `Eroare: ${vec.reason.message}`;
+      }
+
+      if (kw.status === "fulfilled") {
+        $("keywordResults").className = "";
+        $("keywordResults").innerHTML = renderResults(kw.value.data, "keyword");
+        $("keywordTime").textContent = `${kw.value.elapsed} ms`;
+      } else {
+        $("keywordResults").className = "empty";
+        $("keywordResults").textContent = `Eroare: ${kw.reason.message}`;
+      }
+
+      $("statusBar").textContent = `Cautare completa pentru: "${q}"`;
+      btn.disabled = false;
+
+      // Daca sectiunea de explain e vizibila, re-incarcam si planurile
+      if (!$("explainSection").hidden) {
+        loadExplain(q).catch(err => console.error("explain failed:", err));
+      }
+    }
+
+    async function loadExplain(q) {
+      const url = `${API_BASE}/api/explain?q=${encodeURIComponent(q)}&limit=5`;
+      $("vectorPlan").textContent = "Se incarca planul...";
+      $("keywordPlan").textContent = "Se incarca planul...";
+      $("vectorSql").textContent = "";
+      $("keywordSql").textContent = "";
+      try {
+        const { data } = await fetchJson(url);
+        $("vectorPlan").textContent = data.vector_plan || "(plan indisponibil)";
+        $("keywordPlan").textContent = data.keyword_plan || "(plan indisponibil)";
+        $("vectorSql").textContent = data.vector_sql || "";
+        $("keywordSql").textContent = data.keyword_sql || "";
+      } catch (err) {
+        $("vectorPlan").textContent = `Eroare: ${err.message}`;
+        $("keywordPlan").textContent = `Eroare: ${err.message}`;
+      }
+    }
+
+    $("explainBtn").addEventListener("click", () => {
+      const sec = $("explainSection");
+      const btn = $("explainBtn");
+      sec.hidden = !sec.hidden;
+      btn.classList.toggle("active", !sec.hidden);
+      btn.textContent = sec.hidden
+        ? "Arata planurile de executie Oracle (EXPLAIN PLAN)"
+        : "Ascunde planurile de executie";
+      if (!sec.hidden) {
+        const q = $("query").value.trim();
+        if (q) loadExplain(q);
+        else {
+          $("vectorPlan").textContent = "Lanseaza o cautare intai.";
+          $("keywordPlan").textContent = "Lanseaza o cautare intai.";
+        }
+      }
+    });
+
+    $("searchBtn").addEventListener("click", runSearch);
+    $("query").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runSearch();
+    });
+    $("presets").addEventListener("change", (e) => {
+      if (e.target.value) {
+        $("query").value = e.target.value;
+        runSearch();
+      }
+    });
+
+    // Status check la incarcare
+    fetch(`${API_BASE}/api/status`).then(r => r.json()).then(s => {
+      if (s.ok) {
+        $("statusBar").textContent =
+          `OK · ${s.posts_total} posts (${s.posts_with_embedding} cu embedding) · ` +
+          `model ${s.model_loaded ? "incarcat" : "LIPSESTE"}`;
+      } else {
+        $("statusBar").classList.add("error");
+        $("statusBar").textContent = `Probleme la backend: ${s.reason}`;
+      }
+    }).catch(err => {
+      $("statusBar").classList.add("error");
+      $("statusBar").textContent = `Backend inaccesibil: ${err.message}`;
+    });
+  </script>
+</body>
+</html>

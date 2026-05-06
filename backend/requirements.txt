@@ -1,0 +1,20 @@
+# Backend FastAPI pentru demo Vector vs Keyword Search
+# Install: pip install -r backend/requirements.txt
+
+# Web framework + server ASGI
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Driver Oracle (thin mode = fara Instant Client)
+oracledb==2.5.1
+
+# Pydantic (deja dependency tranzitiv al fastapi, dar fixam versiunea)
+pydantic==2.10.5
+
+# Helper .env
+python-dotenv==1.0.1
+
+# Generare embedding pentru query la runtime (acelasi model ca la ingest)
+sentence-transformers==3.3.1
+torch>=2.2.0
+numpy>=1.26.0
