@@ -299,15 +299,18 @@ def _get_explain_plan(conn, sql: str, **bind_params) -> str:
     """
     cur = conn.cursor()
 
-    # 1. Generam un statement_id unic pentru a izola planul nostru
+    # 1. Generam un statement_id unic pentru a izola planul nostru.
+    #    NU folosim bind variable in EXPLAIN PLAN SET STATEMENT_ID - Oracle cere
+    #    un literal string acolo (ORA-01780). Inlining-ul e safe pentru ca noi
+    #    controlam complet formatul (timestamp + prefix).
     stmt_id = f"demo_{int(time.time() * 1000)}"
 
-    # 2. EXPLAIN PLAN ... FOR <SQL>
-    explain_sql = f"EXPLAIN PLAN SET STATEMENT_ID = :sid FOR {sql}"
-    bind_params["sid"] = stmt_id
+    # 2. EXPLAIN PLAN ... FOR <SQL>  (statement_id inline ca literal)
+    explain_sql = f"EXPLAIN PLAN SET STATEMENT_ID = '{stmt_id}' FOR {sql}"
     cur.execute(explain_sql, bind_params)
 
     # 3. DBMS_XPLAN.DISPLAY pentru formatare ASCII
+    #    (aici bind-urile MERG, e o functie obisnuita)
     cur.execute("""
         SELECT plan_table_output
           FROM TABLE(DBMS_XPLAN.DISPLAY(
@@ -318,7 +321,7 @@ def _get_explain_plan(conn, sql: str, **bind_params) -> str:
     """, sid=stmt_id)
     rows = cur.fetchall()
 
-    # Curatam planul pentru a evita stoarcare in plan_table
+    # Curatam plan_table dupa ce am extras output-ul (idempotenta)
     cur.execute("DELETE FROM plan_table WHERE statement_id = :sid", sid=stmt_id)
     conn.commit()
 
