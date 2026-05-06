@@ -2,6 +2,10 @@
 
 > **Tema 10** — *Topici Speciale in Baze de Date si Tehnologii Web*
 > Universitatea din Bucuresti, Facultatea de Matematica si Informatica
+>
+> Studenti:
+> Ciprian Amza (506)
+> Nicolae Marius Gherghu (507)
 
 Demo functional end-to-end care compara **cautarea semantica (vectoriala)** cu
 **cautarea lexicala (keyword) clasica** pe acelasi corpus de date, folosind
