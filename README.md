@@ -486,3 +486,7 @@ oracle-vector-search-demo/
 *Proiect realizat pentru cursul **Topici Speciale in Baze de Date si
 Tehnologii Web**, semestrul 2 — Universitatea din Bucuresti, FMI.
 Tema 10 / 2025-2026.*
+
+
+<img width="1498" height="772" alt="image" src="https://github.com/user-attachments/assets/2307e0c6-8fd3-440e-a5db-525fb9ca9239" />
+
